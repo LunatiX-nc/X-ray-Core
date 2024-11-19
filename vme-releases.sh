@@ -16,7 +16,7 @@ DAT_PATH=${DAT_PATH:-/usr/local/share/xray}
 
 # You can set this variable whatever you want in shell session right before running this script by issuing:
 # export JSON_PATH='/usr/local/etc/xray'
-JSON_PATH=${JSON_PATH:-/usr/local/etc/xray}
+JSON_PATH=${JSON_PATH:-/etc/xray}
 
 # Set this variable only if you are starting xray with multiple configuration files:
 # export JSONS_PATH='/usr/local/etc/xray'
@@ -26,7 +26,7 @@ JSON_PATH=${JSON_PATH:-/usr/local/etc/xray}
 
 # Gobal verbals
 
-if [[ -f '/etc/systemd/system/vmejs.service' ]] && [[ -f '/usr/local/bin/xray' ]]; then
+if [[ -f '/etc/systemd/system/vmejs.service' ]] && [[ -f '/etc/xray' ]]; then
   XRAY_IS_INSTALLED_BEFORE_RUNNING_SCRIPT=1
 else
   XRAY_IS_INSTALLED_BEFORE_RUNNING_SCRIPT=0
@@ -327,7 +327,7 @@ judgment_parameters() {
 
 check_install_user() {
   if [[ -z "$INSTALL_USER" ]]; then
-    if [[ -f '/usr/local/bin/xray' ]]; then
+    if [[ -f '/etc/xray' ]]; then
       INSTALL_USER="$(grep '^[ '$'\t]*User[ '$'\t]*=' /etc/systemd/system/vmejs.service | tail -n 1 | awk -F = '{print $2}' | awk '{print $1}')"
       if [[ -z "$INSTALL_USER" ]]; then
         INSTALL_USER='root'
@@ -358,8 +358,8 @@ install_software() {
 
 get_current_version() {
   # Get the CURRENT_VERSION
-  if [[ -f '/usr/local/bin/xray' ]]; then
-    CURRENT_VERSION="$(/usr/local/bin/xray -version | awk 'NR==1 {print $2}')"
+  if [[ -f '/etc/xray' ]]; then
+    CURRENT_VERSION="$(/etc/xray -version | awk 'NR==1 {print $2}')"
     CURRENT_VERSION="v${CURRENT_VERSION#v}"
   else
     CURRENT_VERSION=""
@@ -511,7 +511,7 @@ install_xray() {
 
 install_startup_service_file() {
   mkdir -p '/etc/systemd/system/vmejs.service.d'
-  mkdir -p '/etc/systemd/system/xray@.service.d/'
+  mkdir -p '/etc/systemd/system/vmejs@.service.d/'
   local temp_CapabilityBoundingSet="CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE"
   local temp_AmbientCapabilities="AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE"
   local temp_NoNewPrivileges="NoNewPrivileges=true"
@@ -531,7 +531,7 @@ User=$INSTALL_USER
 ${temp_CapabilityBoundingSet}
 ${temp_AmbientCapabilities}
 ${temp_NoNewPrivileges}
-ExecStart=/usr/local/bin/xray run -config /usr/local/etc/xray/vme.json
+ExecStart=/etc/xray run -config /usr/local/etc/xray/vme.json
 Restart=on-failure
 RestartPreventExitStatus=23
 LimitNPROC=10000
@@ -540,7 +540,7 @@ LimitNOFILE=1000000
 [Install]
 WantedBy=multi-user.target
 EOF
-cat > /etc/systemd/system/xray@.service <<EOF
+cat > /etc/systemd/system/vmejs@.service <<EOF
 [Unit]
 Description=Xray Service
 Documentation=https://github.com/xtls
@@ -551,7 +551,7 @@ User=$INSTALL_USER
 ${temp_CapabilityBoundingSet}
 ${temp_AmbientCapabilities}
 ${temp_NoNewPrivileges}
-ExecStart=/usr/local/bin/xray run -config /usr/local/etc/xray/%i.json
+ExecStart=/etc/xray run -config /usr/local/etc/xray/%i.json
 Restart=on-failure
 RestartPreventExitStatus=23
 LimitNPROC=10000
@@ -560,32 +560,32 @@ LimitNOFILE=1000000
 [Install]
 WantedBy=multi-user.target
 EOF
-  chmod 644 /etc/systemd/system/vmejs.service /etc/systemd/system/xray@.service
+  chmod 644 /etc/systemd/system/vmejs.service /etc/systemd/system/vmejs@.service
   if [[ -n "$JSONS_PATH" ]]; then
     "rm" '/etc/systemd/system/vmejs.service.d/10-donot_touch_single_conf.conf' \
-      '/etc/systemd/system/xray@.service.d/10-donot_touch_single_conf.conf'
+      '/etc/systemd/system/vmejs@.service.d/10-donot_touch_single_conf.conf'
     echo "# In case you have a good reason to do so, duplicate this file in the same directory and make your customizes there.
 # Or all changes you made will be lost!  # Refer: https://www.freedesktop.org/software/systemd/man/systemd.unit.html
 [Service]
 ExecStart=
-ExecStart=/usr/local/bin/xray run -confdir $JSONS_PATH" |
+ExecStart=/etc/xray run -confdir $JSONS_PATH" |
       tee '/etc/systemd/system/vmejs.service.d/10-donot_touch_multi_conf.conf' > \
-        '/etc/systemd/system/xray@.service.d/10-donot_touch_multi_conf.conf'
+        '/etc/systemd/system/vmejs@.service.d/10-donot_touch_multi_conf.conf'
   else
     "rm" '/etc/systemd/system/vmejs.service.d/10-donot_touch_multi_conf.conf' \
-      '/etc/systemd/system/xray@.service.d/10-donot_touch_multi_conf.conf'
+      '/etc/systemd/system/vmejs@.service.d/10-donot_touch_multi_conf.conf'
     echo "# In case you have a good reason to do so, duplicate this file in the same directory and make your customizes there.
 # Or all changes you made will be lost!  # Refer: https://www.freedesktop.org/software/systemd/man/systemd.unit.html
 [Service]
 ExecStart=
-ExecStart=/usr/local/bin/xray run -config ${JSON_PATH}/vme.json" > \
+ExecStart=/etc/xray run -config ${JSON_PATH}/vme.json" > \
       '/etc/systemd/system/vmejs.service.d/10-donot_touch_single_conf.conf'
     echo "# In case you have a good reason to do so, duplicate this file in the same directory and make your customizes there.
 # Or all changes you made will be lost!  # Refer: https://www.freedesktop.org/software/systemd/man/systemd.unit.html
 [Service]
 ExecStart=
-ExecStart=/usr/local/bin/xray run -config ${JSON_PATH}/%i.json" > \
-      '/etc/systemd/system/xray@.service.d/10-donot_touch_single_conf.conf'
+ExecStart=/etc/xray run -config ${JSON_PATH}/%i.json" > \
+      '/etc/systemd/system/vmejs@.service.d/10-donot_touch_single_conf.conf'
   fi
   echo "info: Systemd service files have been installed successfully!"
   echo "${red}warning: ${green}The following are the actual parameters for the xray service startup."
@@ -595,7 +595,7 @@ ExecStart=/usr/local/bin/xray run -config ${JSON_PATH}/%i.json" > \
   if [[ "${check_all_service_files:0:1}" = 'y' ]]; then
     echo
     echo
-    systemd_cat_config /etc/systemd/system/xray@.service
+    systemd_cat_config /etc/systemd/system/vmejs@.service
   fi
   systemctl daemon-reload
   SYSTEMD='1'
@@ -615,7 +615,7 @@ start_xray() {
 }
 
 stop_xray() {
-  XRAY_CUSTOMIZE="$(systemctl list-units | grep 'xray@' | awk -F ' ' '{print $1}')"
+  XRAY_CUSTOMIZE="$(systemctl list-units | grep 'vmejs@' | awk -F ' ' '{print $1}')"
   if [[ -z "$XRAY_CUSTOMIZE" ]]; then
     local xray_daemon_to_stop='vmejs.service'
   else
@@ -725,7 +725,7 @@ remove_xray() {
     if [[ -n "$(pidof xray)" ]]; then
       stop_xray
     fi
-    local delete_files=('/usr/local/bin/xray' '/etc/systemd/system/vmejs.service' '/etc/systemd/system/xray@.service' '/etc/systemd/system/vmejs.service.d' '/etc/systemd/system/xray@.service.d')
+    local delete_files=('/etc/xray' '/etc/systemd/system/vmejs.service' '/etc/systemd/system/vmejs@.service' '/etc/systemd/system/vmejs.service.d' '/etc/systemd/system/vmejs@.service.d')
     [[ -d "$DAT_PATH" ]] && delete_files+=("$DAT_PATH")
     [[ -f '/etc/logrotate.d/xray' ]] && delete_files+=('/etc/logrotate.d/xray')
     if [[ "$PURGE" -eq '1' ]]; then
@@ -892,7 +892,7 @@ main() {
   fi
   install_xray
   [[ "$N_UP_SERVICE" -eq '1' && -f '/etc/systemd/system/vmejs.service' ]] || install_startup_service_file
-  echo 'installed: /usr/local/bin/xray'
+  echo 'installed: /etc/xray'
   # If the file exists, the content output of installing or updating geoip.dat and geosite.dat will not be displayed
   if [[ "$GEODATA" -eq '1' ]]; then
     echo "installed: ${DAT_PATH}/geoip.dat"
@@ -936,7 +936,7 @@ main() {
   fi
   if [[ "$SYSTEMD" -eq '1' ]]; then
     echo 'installed: /etc/systemd/system/vmejs.service'
-    echo 'installed: /etc/systemd/system/xray@.service'
+    echo 'installed: /etc/systemd/system/vmejs@.service'
   fi
   "rm" -r "$TMP_DIRECTORY"
   echo "removed: $TMP_DIRECTORY"
